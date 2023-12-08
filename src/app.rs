@@ -6,8 +6,8 @@ pub mod prelude {
     pub use crate::app_mpsc::*;
 }
 
-pub struct App<T> {
-    systems: Vec<*mut (dyn Fn(T, AppSender<T>) + Sync + Send + 'static)>,
+pub struct App<T: 'static> {
+    systems: Vec<&'static (dyn Fn(T, AppSender<T>) + Sync + Send)>,
     app_sender_factory: AppSenderFactory<T>,
     app_receiver: AppReceiver<T>,
 }
@@ -24,11 +24,8 @@ where
             app_receiver: r,
         }
     }
-    pub fn add_system<F>(&mut self, f: F) -> &mut Self
-    where
-        F: Fn(T, AppSender<T>) + Sync + Send + 'static,
-    {
-        self.systems.push(Box::into_raw(Box::new(f)));
+    pub fn add_system(&mut self, f: &'static (dyn Fn(T, AppSender<T>) + Sync + Send)) -> &mut Self {
+        self.systems.push(f);
         self
     }
     pub fn run(&self, top: T) {
@@ -36,8 +33,8 @@ where
         for v in self.app_receiver.inner() {
             for (i, f) in self.systems.iter().enumerate() {
                 let sender = self.app_sender_factory.build(i);
-                let f = unsafe { Box::from_raw(f.clone()) };
                 let v = v.clone();
+                let f = Clone::clone(f);
                 if v.not(i) {
                     thread::spawn(move || f(v.inner(), sender));
                 }

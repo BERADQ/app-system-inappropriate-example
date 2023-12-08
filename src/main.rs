@@ -8,8 +8,9 @@ use app::prelude::*;
 
 fn main() {
     let mut app: App<String> = App::new();
-    app.add_system(hello_world_sender)
-        .add_system(hello_world_receiver)
+    app.add_system(&hello_world_sender)
+        .add_system(&hello_world_receiver0)
+        .add_system(&hello_world_receiver1)
         .run(String::from("!"));
 }
 
@@ -20,6 +21,9 @@ fn hello_world_sender(a: String, s: AppSender<String>) {
         thread::sleep(Duration::from_secs(1));
     }
 }
-fn hello_world_receiver(a: String, _: AppSender<String>) {
+fn hello_world_receiver0(a: String, _: AppSender<String>) {
     println!("Hello {}", a)
+}
+fn hello_world_receiver1(a: String, _: AppSender<String>) {
+    println!("Bye {}", a)
 }
