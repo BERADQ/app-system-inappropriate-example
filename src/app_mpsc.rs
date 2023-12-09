@@ -1,36 +1,43 @@
 use std::sync::mpsc::{channel, Receiver, RecvError, SendError, Sender};
+use std::sync::Arc;
+use std::sync::RwLock;
 
-#[derive(Clone)]
-pub struct WithID<T>(T, usize);
-impl<T: Clone> WithID<T> {
+pub struct ArcWithID<T>(Arc<RwLock<T>>, usize);
+impl<T> Clone for ArcWithID<T> {
+    fn clone(&self) -> Self {
+        ArcWithID(self.0.clone(), self.1.clone())
+    }
+}
+impl<T> ArcWithID<T> {
     pub fn not(&self, id: usize) -> bool {
         self.1 != id
     }
-    pub fn inner(&self) -> T {
+    pub fn inner(&self) -> Arc<RwLock<T>> {
         self.0.clone()
     }
 }
-pub struct AppSender<T>(Sender<WithID<T>>, usize);
+pub struct AppSender<T>(Sender<ArcWithID<T>>, usize);
 impl<T> AppSender<T> {
-    pub fn send(&self, something: T) -> Result<(), SendError<WithID<T>>> {
-        self.0.send(WithID(something, self.1))
+    pub fn send(&self, something: T) -> Result<(), SendError<ArcWithID<T>>> {
+        self.0
+            .send(ArcWithID(Arc::new(RwLock::new(something)), self.1))
     }
 }
 
-pub struct AppSenderFactory<T>(Sender<WithID<T>>);
+pub struct AppSenderFactory<T>(Sender<ArcWithID<T>>);
 impl<T> AppSenderFactory<T> {
     pub fn build(&self, id: usize) -> AppSender<T> {
         AppSender(self.0.clone(), id)
     }
 }
 
-pub struct AppReceiver<T>(Receiver<WithID<T>>);
+pub struct AppReceiver<T>(Receiver<ArcWithID<T>>);
 impl<T> AppReceiver<T> {
     #[allow(dead_code)]
-    pub fn recv(&self) -> Result<WithID<T>, RecvError> {
+    pub fn recv(&self) -> Result<ArcWithID<T>, RecvError> {
         self.0.recv()
     }
-    pub fn inner(&self) -> &Receiver<WithID<T>> {
+    pub fn inner(&self) -> &Receiver<ArcWithID<T>> {
         &self.0
     }
 }
